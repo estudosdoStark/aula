@@ -1,0 +1,294 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil de acesso do usuário (Aluno ou Corpo Docente Administrador) no Conexão Lupion.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID do usuário."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Nome completo ou identificação do usuário."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 150,
+          "description": "E-mail institucional ou pessoal autenticado."
+        },
+        "userType": {
+          "type": "string",
+          "enum": ["aluno", "docente"],
+          "description": "Categoria principal da conta: aluno (somente leitura) ou docente (administrador)."
+        },
+        "facultyRole": {
+          "type": "string",
+          "enum": ["professor", "equipe_pedagogica", "none"],
+          "description": "Subperfil do corpo docente: professor (edita apenas turmas) ou equipe_pedagogica (edita todo o site)."
+        },
+        "studentClass": {
+          "type": "string",
+          "enum": ["6º Ano", "7º Ano", "8º Ano", "9º Ano", "1º Ano EM", "2º Ano EM", "3º Ano EM", "none"],
+          "description": "Turma cadastrada para contas de aluno."
+        },
+        "facultyAccessCode": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Código institucional validado para ativação de conta docente."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de criação do perfil."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp da última atualização do perfil."
+        }
+      },
+      "required": ["uid", "displayName", "email", "userType", "facultyRole", "studentClass", "createdAt", "updatedAt"]
+    },
+    "MuralPost": {
+      "title": "MuralPost",
+      "description": "Publicação do mural escolar (geral ou específica de turma).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Identificador da publicação."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Aviso de Turma", "Evento", "Geral da Escola", "Cardápio"],
+          "description": "Categoria do comunicado."
+        },
+        "targetClass": {
+          "type": "string",
+          "enum": ["Geral", "6º Ano", "7º Ano", "8º Ano", "9º Ano", "1º Ano EM", "2º Ano EM", "3º Ano EM"],
+          "description": "Turma alvo ou Geral para toda a escola."
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["Texto", "Vídeo", "Áudio/Podcast", "Foto"],
+          "description": "Formato multimídia da publicação."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 160,
+          "description": "Título da publicação."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 1200,
+          "description": "Conteúdo detalhado da publicação."
+        },
+        "author": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Nome exibido do autor."
+        },
+        "authorUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID do criador da publicação."
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Rótulo de perfil exibido no card."
+        },
+        "dateLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "Texto curto de data/horário exibido."
+        },
+        "baseLikes": {
+          "type": "number",
+          "description": "Contagem inicial de curtidas da publicação."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["Normal", "Importante", "Urgente"],
+          "description": "Nível de destaque da publicação."
+        },
+        "tag": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Tag opcional do aviso de turma."
+        },
+        "badgeColor": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Classes de destaque do badge."
+        },
+        "mediaDuration": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Duração opcional de vídeo/áudio."
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"],
+          "description": "Visibilidade pública no mural escolar."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de criação."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de atualização."
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "targetClass",
+        "mediaType",
+        "title",
+        "description",
+        "author",
+        "authorUid",
+        "role",
+        "dateLabel",
+        "baseLikes",
+        "priority",
+        "visibility",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PostLike": {
+      "title": "PostLike",
+      "description": "Registro individual de curtida por usuário autenticado.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "postId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "postId", "createdAt"]
+    },
+    "MenuDayItem": {
+      "title": "MenuDayItem",
+      "description": "Cardápio diário da alimentação escolar.",
+      "type": "object",
+      "properties": {
+        "dayKey": {
+          "type": "string",
+          "enum": ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+        },
+        "dayFull": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "morning": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "lunch": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "afternoon": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"]
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["dayKey", "dayFull", "morning", "lunch", "afternoon", "visibility", "updatedBy", "updatedAt"]
+    },
+    "UrgentBanner": {
+      "title": "UrgentBanner",
+      "description": "Faixa superior de aviso urgente do mural.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"]
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["text", "visibility", "updatedBy", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Perfis individuais com tipo de acesso (aluno, professor, equipe_pedagogica) e turma."
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/MuralPost" },
+      "description": "Publicações do mural escolar (avisos de turma e informações gerais)."
+    },
+    "/posts/{postId}/likes/{userId}": {
+      "schema": { "$ref": "#/entities/PostLike" },
+      "description": "Curtidas individuais vinculadas às publicações."
+    },
+    "/weeklyMenu/{dayKey}": {
+      "schema": { "$ref": "#/entities/MenuDayItem" },
+      "description": "Cardápio semanal editável pela Equipe Pedagógica."
+    },
+    "/siteConfig/{configId}": {
+      "schema": { "$ref": "#/entities/UrgentBanner" },
+      "description": "Configurações globais do mural, incluindo o aviso urgente superior."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Conexão Lupion — O Mural Vivo da Nossa Escola",
+  "description": "Ponto de encontro digital do Colégio Estadual Cívico-Militar Moyses Lupion (Antonina/PR). Cardápio semanal, eventos, protagonismo estudantil e mural de avisos por turma.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

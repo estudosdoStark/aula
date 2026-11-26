@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+
+  --color-navy-50: #f0f4f9;
+  --color-navy-100: #dce5f2;
+  --color-navy-200: #bfd0e8;
+  --color-navy-700: #1e3a6e;
+  --color-navy-800: #132B52;
+  --color-navy-900: #0B1D3A;
+  --color-navy-950: #071226;
+
+  --color-crimson-50: #fff1f3;
+  --color-crimson-100: #ffe0e5;
+  --color-crimson-200: #ffc7d0;
+  --color-crimson-400: #fb3b5b;
+  --color-crimson-500: #E11D48;
+  --color-crimson-600: #C8102E;
+  --color-crimson-700: #a30b24;
+}
+
+/* Animações suaves e scrollbar customizada */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card {
+  animation: fadeInScale 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Barra de progresso do player de áudio simulado */
+@keyframes audioWave {
+  0%, 100% {
+    height: 6px;
+  }
+  50% {
+    height: 18px;
+  }
+}
+
+.wave-bar.playing {
+  animation: audioWave 0.8s ease-in-out infinite;
+}

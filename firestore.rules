@@ -1,0 +1,330 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // =========================================================================
+    // GLOBAL SAFETY NET (Default-Deny)
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // PRIMITIVE HELPERS
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email == 'everton.a.correiaestudos@gmail.com' &&
+        request.auth.token.email_verified == true;
+    }
+
+    function userDocExists() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDocData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isEquipePedagogica() {
+      return isBootstrappedAdmin() || (
+        userDocExists() &&
+        userDocData().userType == 'docente' &&
+        userDocData().facultyRole == 'equipe_pedagogica'
+      );
+    }
+
+    function isProfessor() {
+      return userDocExists() &&
+        userDocData().userType == 'docente' &&
+        userDocData().facultyRole == 'professor';
+    }
+
+    function isValidClassName(cls) {
+      return cls in ['6º Ano', '7º Ano', '8º Ano', '9º Ano', '1º Ano EM', '2º Ano EM', '3º Ano EM'];
+    }
+
+    function hasValidFacultyAuthorization(data) {
+      return isBootstrappedAdmin() || (
+        data.keys().hasAny(['facultyAccessCode']) &&
+        data.facultyAccessCode is string &&
+        data.facultyAccessCode == 'LUPION2026'
+      );
+    }
+
+    // =========================================================================
+    // VALIDATION BLUEPRINTS
+    // =========================================================================
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'userType', 'facultyRole', 'studentClass', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'email', 'userType', 'facultyRole', 'studentClass', 'facultyAccessCode', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+        data.userType in ['aluno', 'docente'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        (
+          !data.keys().hasAny(['facultyAccessCode']) ||
+          (data.facultyAccessCode is string && data.facultyAccessCode.size() <= 32)
+        ) &&
+        (
+          (
+            data.userType == 'aluno' &&
+            data.facultyRole == 'none' &&
+            isValidClassName(data.studentClass)
+          ) ||
+          (
+            data.userType == 'docente' &&
+            data.facultyRole in ['professor', 'equipe_pedagogica'] &&
+            data.studentClass == 'none'
+          )
+        );
+    }
+
+    function isValidMuralPost(data) {
+      return data.keys().hasAll([
+          'id', 'category', 'targetClass', 'mediaType', 'title', 'description',
+          'author', 'authorUid', 'role', 'dateLabel', 'baseLikes', 'priority',
+          'visibility', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'category', 'targetClass', 'mediaType', 'title', 'description',
+          'author', 'authorUid', 'role', 'dateLabel', 'baseLikes', 'priority',
+          'tag', 'badgeColor', 'mediaDuration', 'visibility', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.category in ['Aviso de Turma', 'Evento', 'Geral da Escola', 'Cardápio'] &&
+        (data.targetClass == 'Geral' || isValidClassName(data.targetClass)) &&
+        data.mediaType in ['Texto', 'Vídeo', 'Áudio/Podcast', 'Foto'] &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 160 &&
+        data.description is string && data.description.size() >= 2 && data.description.size() <= 1200 &&
+        data.author is string && data.author.size() >= 2 && data.author.size() <= 100 &&
+        isValidId(data.authorUid) &&
+        data.role is string && data.role.size() >= 2 && data.role.size() <= 80 &&
+        data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 60 &&
+        data.baseLikes is number && data.baseLikes >= 0 && data.baseLikes <= 100000 &&
+        data.priority in ['Normal', 'Importante', 'Urgente'] &&
+        data.visibility == 'public' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        (!data.keys().hasAny(['tag']) || (data.tag is string && data.tag.size() <= 60)) &&
+        (!data.keys().hasAny(['badgeColor']) || (data.badgeColor is string && data.badgeColor.size() <= 120)) &&
+        (!data.keys().hasAny(['mediaDuration']) || (data.mediaDuration is string && data.mediaDuration.size() <= 20));
+    }
+
+    function isClassOnlyPost(data) {
+      return data.category == 'Aviso de Turma' && isValidClassName(data.targetClass);
+    }
+
+    function isValidPostLike(data) {
+      return data.keys().hasAll(['userId', 'postId', 'createdAt']) &&
+        data.keys().hasOnly(['userId', 'postId', 'createdAt']) &&
+        isValidId(data.userId) &&
+        isValidId(data.postId) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidMenuDay(data) {
+      return data.keys().hasAll(['dayKey', 'dayFull', 'morning', 'lunch', 'afternoon', 'visibility', 'updatedBy', 'updatedAt']) &&
+        data.keys().hasOnly(['dayKey', 'dayFull', 'morning', 'lunch', 'afternoon', 'visibility', 'updatedBy', 'updatedAt']) &&
+        data.dayKey in ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'] &&
+        data.dayFull is string && data.dayFull.size() >= 3 && data.dayFull.size() <= 40 &&
+        data.morning is string && data.morning.size() >= 2 && data.morning.size() <= 300 &&
+        data.lunch is string && data.lunch.size() >= 2 && data.lunch.size() <= 300 &&
+        data.afternoon is string && data.afternoon.size() >= 2 && data.afternoon.size() <= 300 &&
+        data.visibility == 'public' &&
+        isValidId(data.updatedBy) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUrgentBanner(data) {
+      return data.keys().hasAll(['text', 'visibility', 'updatedBy', 'updatedAt']) &&
+        data.keys().hasOnly(['text', 'visibility', 'updatedBy', 'updatedAt']) &&
+        data.text is string && data.text.size() >= 2 && data.text.size() <= 300 &&
+        data.visibility == 'public' &&
+        isValidId(data.updatedBy) &&
+        data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // USERS COLLECTION (PII ISOLATED)
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isSignedIn() && (isOwner(userId) || isEquipePedagogica());
+      allow list: if isSignedIn() && (existing().uid == request.auth.uid || isEquipePedagogica());
+
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          incoming().userType == 'aluno' ||
+          (incoming().userType == 'docente' && hasValidFacultyAuthorization(incoming()))
+        );
+
+      allow update: if isValidId(userId) &&
+        isSignedIn() &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'userType', 'facultyRole', 'studentClass', 'facultyAccessCode', 'updatedAt'
+        ]) &&
+        (
+          isEquipePedagogica() ||
+          (
+            isOwner(userId) &&
+            (
+              (incoming().userType == 'aluno' && existing().userType == 'aluno') ||
+              (
+                incoming().userType == 'docente' &&
+                (existing().userType == 'docente' || hasValidFacultyAuthorization(incoming()))
+              )
+            )
+          )
+        );
+
+      allow delete: if isValidId(userId) && isEquipePedagogica();
+    }
+
+    // =========================================================================
+    // MURAL POSTS COLLECTION (TIERED RBAC: EQUIPE PEDAGÓGICA VS PROFESSOR)
+    // =========================================================================
+    match /posts/{postId} {
+      allow get: if isValidId(postId) && existing().visibility == 'public';
+      allow list: if existing().visibility == 'public';
+
+      allow create: if isValidId(postId) &&
+        isSignedIn() &&
+        isValidMuralPost(incoming()) &&
+        incoming().id == postId &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          isEquipePedagogica() ||
+          (isProfessor() && isClassOnlyPost(incoming()))
+        );
+
+      allow update: if isValidId(postId) &&
+        isSignedIn() &&
+        isValidMuralPost(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().authorUid == existing().authorUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'category', 'targetClass', 'mediaType', 'title', 'description',
+          'author', 'role', 'dateLabel', 'priority', 'tag', 'badgeColor',
+          'mediaDuration', 'updatedAt'
+        ]) &&
+        (
+          isEquipePedagogica() ||
+          (isProfessor() && isClassOnlyPost(existing()) && isClassOnlyPost(incoming()))
+        );
+
+      allow delete: if isValidId(postId) &&
+        isSignedIn() &&
+        (
+          isEquipePedagogica() ||
+          (isProfessor() && isClassOnlyPost(existing()))
+        );
+
+      // Subcollection: Likes
+      match /likes/{userId} {
+        allow get: if isValidId(postId) && isValidId(userId) && exists(/databases/$(database)/documents/posts/$(postId));
+        allow list: if isValidId(postId) && existing().postId == postId;
+
+        allow create: if isValidId(postId) &&
+          isValidId(userId) &&
+          isOwner(userId) &&
+          exists(/databases/$(database)/documents/posts/$(postId)) &&
+          isValidPostLike(incoming()) &&
+          incoming().userId == request.auth.uid &&
+          incoming().postId == postId &&
+          incoming().createdAt == request.time;
+
+        allow delete: if isValidId(postId) &&
+          isValidId(userId) &&
+          isOwner(userId) &&
+          exists(/databases/$(database)/documents/posts/$(postId));
+      }
+    }
+
+    // =========================================================================
+    // WEEKLY MENU COLLECTION (ONLY EQUIPE PEDAGÓGICA CAN EDIT)
+    // =========================================================================
+    match /weeklyMenu/{dayKey} {
+      allow get: if dayKey in ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'] && existing().visibility == 'public';
+      allow list: if existing().visibility == 'public';
+
+      allow create: if dayKey in ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'] &&
+        isEquipePedagogica() &&
+        isValidMenuDay(incoming()) &&
+        incoming().dayKey == dayKey &&
+        incoming().updatedBy == request.auth.uid &&
+        incoming().updatedAt == request.time;
+
+      allow update: if dayKey in ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'] &&
+        isEquipePedagogica() &&
+        isValidMenuDay(incoming()) &&
+        incoming().dayKey == existing().dayKey &&
+        incoming().updatedBy == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'morning', 'lunch', 'afternoon', 'updatedBy', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // SITE CONFIG COLLECTION (URGENT BANNER - ONLY EQUIPE PEDAGÓGICA CAN EDIT)
+    // =========================================================================
+    match /siteConfig/{configId} {
+      allow get: if isValidId(configId) && configId == 'urgentBanner' && existing().visibility == 'public';
+      allow list: if existing().visibility == 'public';
+
+      allow create: if isValidId(configId) &&
+        configId == 'urgentBanner' &&
+        isEquipePedagogica() &&
+        isValidUrgentBanner(incoming()) &&
+        incoming().updatedBy == request.auth.uid &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(configId) &&
+        configId == 'urgentBanner' &&
+        isEquipePedagogica() &&
+        isValidUrgentBanner(incoming()) &&
+        incoming().updatedBy == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['text', 'updatedBy', 'updatedAt']);
+
+      allow delete: if false;
+    }
+  }
+}
